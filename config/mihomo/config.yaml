@@ -15,7 +15,7 @@ allow-lan: true
 
 # --- External Controller (Web UI API) ---
 external-controller: 0.0.0.0:51888
-external-ui: /data/ui
+external-ui: /opt/metacubexd
 secret: ""
 
 # --- TUN Mode (transparent proxy for gateway) ---

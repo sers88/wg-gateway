@@ -103,7 +103,7 @@ docker compose up -d
 |---|---|
 | `/data/wireguard` | WireGuard server config and peer data |
 | `/data/mihomo` | Proxy engine configuration |
-| `/data/ui` | Web UI static assets |
+| `/data/ui` | Optional: custom UI assets (bundled UI is used by default) |
 | `/data/logs` | Log files |
 
 ## First start

@@ -27,8 +27,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# wg-easy app (pure JavaScript, no native modules to rebuild)
+# wg-easy app — copy source then install dependencies for Debian/glibc.
+# The Alpine-built node_modules from the wg-easy image won't work here.
 COPY --from=wg-easy-source /app /opt/wg-easy
+RUN cd /opt/wg-easy && rm -rf node_modules && npm ci --omit=dev \
+    && node -e "require('bcryptjs')" \
+    && echo "wg-easy dependencies OK"
 
 # Mihomo core binary
 # Asset naming: mihomo-linux-amd64-<tag>.gz (adjust build arg if upstream changes)

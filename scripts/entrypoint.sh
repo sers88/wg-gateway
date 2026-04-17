@@ -11,7 +11,6 @@ if [ ! -L /etc/wireguard ]; then
     if [ -d /etc/wireguard ] && [ -z "$(ls -A /etc/wireguard 2>/dev/null)" ]; then
         rmdir /etc/wireguard
     elif [ -d /etc/wireguard ]; then
-        # Migrate existing config
         cp -a /etc/wireguard/* /data/wireguard/ 2>/dev/null || true
         rm -rf /etc/wireguard
     fi
@@ -24,11 +23,10 @@ if [ ! -f /data/mihomo/config.yaml ]; then
     cp /defaults/mihomo/config.yaml /data/mihomo/config.yaml
 fi
 
-# Seed metacubexd UI assets if /data/ui is empty
-if [ -z "$(ls -A /data/ui 2>/dev/null)" ]; then
-    echo "[wg-gateway] Seeding default UI assets..."
-    cp -r /opt/metacubexd/* /data/ui/
-fi
+# UI assets are bundled at /opt/metacubexd in the image.
+# The default Mihomo config points external-ui there directly.
+# Users can override by editing config.yaml to set external-ui: /data/ui
+# and mounting custom UI assets into /data/ui.
 
 # Apply kernel parameters
 /scripts/setup-sysctl.sh

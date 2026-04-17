@@ -33,5 +33,5 @@ fi
 echo "[wg-easy] Starting on port ${PORT}..."
 echo "[wg-easy] WG_HOST=${WG_HOST}, WG_PORT=${WG_PORT}"
 
-cd /opt/wg-easy
+cd /app
 exec node server.js

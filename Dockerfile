@@ -28,9 +28,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && rm -rf /var/lib/apt/lists/*
 
 # wg-easy app — copy source then install dependencies for Debian/glibc.
-# The Alpine-built node_modules from the wg-easy image won't work here.
-COPY --from=wg-easy-source /app /opt/wg-easy
-RUN cd /opt/wg-easy && rm -rf node_modules && npm ci --omit=dev \
+# Must live at /app because Server.js hardcodes publicDir='/app/www'.
+COPY --from=wg-easy-source /app /app
+RUN cd /app && rm -rf node_modules && npm ci --omit=dev \
     && node -e "require('bcryptjs')" \
     && echo "wg-easy dependencies OK"
 

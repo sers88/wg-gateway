@@ -1,0 +1,139 @@
+# wg-gateway - Default Mihomo Configuration
+# ===========================================
+# This file is seeded to /data/mihomo/config.yaml on first start.
+# Edit it directly or replace it with your own config via volume mount.
+#
+# After editing, restart Mihomo via the Web UI (port 51888) or:
+#   docker exec <container> supervisorctl restart mihomo
+
+# --- General ---
+mixed-port: 7890
+bind-address: "*"
+mode: rule
+log-level: info
+allow-lan: true
+
+# --- External Controller (Web UI API) ---
+external-controller: 0.0.0.0:51888
+external-ui: /data/ui
+secret: ""
+
+# --- TUN Mode (transparent proxy for gateway) ---
+tun:
+  enable: true
+  stack: mixed
+  auto-route: false
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
+
+# --- DNS ---
+dns:
+  enable: true
+  listen: 0.0.0.0:5353
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - "*.lan"
+    - "*.local"
+    - "*.localhost"
+  default-nameserver:
+    - 8.8.8.8
+    - 1.1.1.1
+  nameserver:
+    - https://dns.cloudflare.com/dns-query
+    - https://dns.google/dns-query
+  fallback:
+    - tls://8.8.8.8:853
+    - tls://1.1.1.1:853
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+
+# --- Proxies ---
+# Uncomment and configure for manual proxy definitions.
+# proxies:
+#   - name: "my-ss-server"
+#     type: ss
+#     server: server.example.com
+#     port: 443
+#     cipher: aes-256-gcm
+#     password: "your-password"
+
+# --- Proxy Providers (subscription-based) ---
+# Uncomment and set your subscription URL to auto-load proxies.
+# proxy-providers:
+#   my-sub:
+#     type: http
+#     url: "https://your-subscription-url-here"
+#     interval: 3600
+#     path: /data/mihomo/providers/my-sub.yaml
+#     health-check:
+#       enable: true
+#       url: http://www.gstatic.com/generate_204
+#       interval: 300
+
+# --- Proxy Groups ---
+proxy-groups:
+  - name: PROXY
+    type: select
+    # use:
+    #   - my-sub    # uncomment when using proxy-providers
+    proxies:
+      - DIRECT
+      # - my-ss-server  # uncomment when using manual proxies
+
+  - name: "Auto"
+    type: url-test
+    # use:
+    #   - my-sub
+    proxies:
+      - DIRECT
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+
+# --- Rule Providers ---
+# Uncomment to use external rule sets.
+# rule-providers:
+#   reject:
+#     type: http
+#     behavior: domain
+#     url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt"
+#     path: /data/mihomo/ruleset/reject.yaml
+#     interval: 86400
+#   direct:
+#     type: http
+#     behavior: domain
+#     url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt"
+#     path: /data/mihomo/ruleset/direct.yaml
+#     interval: 86400
+#   proxy:
+#     type: http
+#     behavior: domain
+#     url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt"
+#     path: /data/mihomo/ruleset/proxy.yaml
+#     interval: 86400
+
+# --- Rules ---
+# Rules are evaluated top-to-bottom. First match wins.
+# To route traffic through a proxy, add rules before the MATCH fallback
+# that direct to the PROXY group.
+rules:
+  # Private/local networks always go direct
+  - DOMAIN-SUFFIX,local,DIRECT
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+
+  # Uncomment rule-provider references when using rule-providers above:
+  # - RULE-SET,reject,REJECT
+  # - RULE-SET,direct,DIRECT
+  # - RULE-SET,proxy,PROXY
+
+  # Default: all unmatched traffic goes DIRECT.
+  # Change to "MATCH,PROXY" to send all unmatched traffic through your proxy.
+  - MATCH,DIRECT

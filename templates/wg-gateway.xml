@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>wg-gateway</Name>
+  <Repository>ksantd/wg-gateway</Repository>
+  <Registry>https://hub.docker.com/r/ksantd/wg-gateway</Registry>
+  <Network>host</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/ksantd/wg-gateway/issues</Support>
+  <Project>https://github.com/ksantd/wg-gateway</Project>
+  <Overview>
+    WireGuard VPN gateway with integrated rule-based proxy engine.
+
+    Connects WireGuard clients and routes all traffic through a proxy/direct
+    engine (Mihomo) that applies per-rule routing decisions. Includes web UIs
+    for both WireGuard peer management (wg-easy) and proxy rule configuration.
+
+    IMPORTANT: Requires capabilities and a device that Unraid cannot set through
+    the template alone. After adding the container, edit it and add to
+    "Extra Parameters":
+      --cap-add NET_ADMIN --cap-add SYS_MODULE --device /dev/net/tun:/dev/net/tun
+  </Overview>
+  <Category>Network:VPN</Category>
+  <WebUI>http://[IP]:[PORT:51821]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/ksantd/wg-gateway/main/templates/wg-gateway.xml</TemplateURL>
+
+  <Config Name="Server Public IP" Target="WG_HOST" Default="" Description="Public IP or hostname of this server (required for WireGuard client config)" Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="WireGuard Port" Target="WG_PORT" Default="51820" Description="WireGuard server UDP port" Type="Variable" Display="always" Required="false" Mask="false">51820</Config>
+  <Config Name="wg-easy UI Port" Target="WG_EASY_PORT" Default="51821" Description="wg-easy Web UI port" Type="Variable" Display="always" Required="false" Mask="false">51821</Config>
+  <Config Name="Proxy Engine Port" Target="MIHOMO_PORT" Default="51888" Description="Proxy engine Web UI / API port" Type="Variable" Display="always" Required="false" Mask="false">51888</Config>
+  <Config Name="DNS for Clients" Target="WG_DEFAULT_DNS" Default="1.1.1.1" Description="DNS servers advertised to WireGuard clients" Type="Variable" Display="always" Required="false" Mask="false">1.1.1.1</Config>
+
+  <Config Name="WireGuard Data" Target="/data/wireguard" Default="/mnt/user/appdata/wg-gateway/wireguard" Mode="rw" Description="Persistent WireGuard configuration and peer data" Type="Path" Display="always" Required="true">/mnt/user/appdata/wg-gateway/wireguard</Config>
+  <Config Name="Proxy Config" Target="/data/mihomo" Default="/mnt/user/appdata/wg-gateway/mihomo" Mode="rw" Description="Persistent proxy engine configuration" Type="Path" Display="always" Required="true">/mnt/user/appdata/wg-gateway/mihomo</Config>
+  <Config Name="UI Assets" Target="/data/ui" Default="/mnt/user/appdata/wg-gateway/ui" Mode="rw" Description="Web UI assets" Type="Path" Display="always" Required="true">/mnt/user/appdata/wg-gateway/ui</Config>
+  <Config Name="Logs" Target="/data/logs" Default="/mnt/user/appdata/wg-gateway/logs" Mode="rw" Description="Log files" Type="Path" Display="always" Required="false">/mnt/user/appdata/wg-gateway/logs</Config>
+</Container>

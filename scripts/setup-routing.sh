@@ -2,6 +2,10 @@
 # Policy routing daemon: routes WireGuard client traffic through Mihomo TUN.
 # Runs as a long-lived supervisord service so routing is re-applied
 # automatically if Mihomo or wg-easy restart and interfaces are recreated.
+#
+# Mihomo adds its own ip rules around priority 5200+ (fwmark + catch-all).
+# Our rules MUST have lower priority numbers (higher precedence) so WG client
+# traffic is captured BEFORE Mihomo's catch-all.
 
 TUN_DEV="${TUN_DEV:-Meta}"
 TABLE="${ROUTE_TABLE:-666}"
@@ -34,21 +38,32 @@ apply_routing() {
 
     local changed=false
 
-    # Default route through Mihomo TUN in custom table
+    # Default route through Mihomo TUN in our custom table
     if ! ip route show table "${TABLE}" 2>/dev/null | grep -q "dev ${TUN_DEV}"; then
-        ip route replace default dev "${TUN_DEV}" table "${TABLE}" 2>/dev/null && changed=true
+        if ip route replace default dev "${TUN_DEV}" table "${TABLE}"; then
+            changed=true
+        else
+            echo "[routing] ERROR: Failed to add route dev ${TUN_DEV} table ${TABLE}"
+        fi
     fi
 
-    # Priority 9000: traffic TO private/local networks uses main table (bypass Mihomo)
-    ip rule replace to 10.0.0.0/8 table main priority 9000 2>/dev/null || true
-    ip rule replace to 172.16.0.0/12 table main priority 9000 2>/dev/null || true
-    ip rule replace to 192.168.0.0/16 table main priority 9000 2>/dev/null || true
-    ip rule replace to 169.254.0.0/16 table main priority 9000 2>/dev/null || true
-    ip rule replace to 127.0.0.0/8 table main priority 9000 2>/dev/null || true
+    # Priority 100: bypass Mihomo for traffic TO private/local networks.
+    # These must come before the WG capture rule so local traffic doesn't loop.
+    for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 127.0.0.0/8; do
+        if ! ip rule show | grep -q "to ${net} lookup main"; then
+            ip rule replace to "${net}" table main priority 100 || \
+                echo "[routing] WARNING: Failed to add bypass rule for ${net}"
+        fi
+    done
 
-    # Priority 10000: traffic FROM WireGuard clients goes through Mihomo
-    if ! ip rule show table "${TABLE}" 2>/dev/null | grep -q "from ${WG_SUBNET}"; then
-        ip rule replace from "${WG_SUBNET}" table "${TABLE}" priority 10000 2>/dev/null && changed=true
+    # Priority 200: traffic FROM WireGuard clients goes through Mihomo TUN.
+    # Must be < 5200 (Mihomo's catch-all) so it is evaluated first.
+    if ! ip rule show | grep -q "from ${WG_SUBNET} lookup ${TABLE}"; then
+        if ip rule replace from "${WG_SUBNET}" table "${TABLE}" priority 200; then
+            changed=true
+        else
+            echo "[routing] ERROR: Failed to add policy rule for ${WG_SUBNET}"
+        fi
     fi
 
     # Allow forwarding between wg0 and TUN (survives Docker's FORWARD DROP policy)

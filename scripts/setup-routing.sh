@@ -30,9 +30,20 @@ done
 
 echo "[routing] Both interfaces are up."
 
+# Add iptables rule to all available backends (iptables-nft AND iptables-legacy).
+# Docker on Unraid uses iptables-legacy; other systems may use iptables-nft.
+ipt_add() {
+    local chain="$1"; shift
+    local match="$1"; shift
+    for ipt in iptables-legacy iptables; do
+        command -v "$ipt" >/dev/null 2>&1 || continue
+        $ipt -C "$chain" $match -j ACCEPT 2>/dev/null || $ipt -I "$chain" 1 $match -j ACCEPT 2>/dev/null || true
+    done
+}
+
 apply_routing() {
     # Disable rp_filter on TUN and wg0 — prevents kernel from dropping
-    # packets with asymmetric routing paths (WG ↔ TUN).
+    # packets with asymmetric routing paths (WG <-> TUN).
     sysctl -w net.ipv4.conf.${TUN_DEV}.rp_filter=0 > /dev/null 2>&1 || true
     sysctl -w net.ipv4.conf.wg0.rp_filter=0 > /dev/null 2>&1 || true
 
@@ -74,16 +85,21 @@ apply_routing() {
         fi
     fi
 
-    # Allow forwarding between wg0 and TUN (survives Docker's FORWARD DROP policy)
-    iptables -C FORWARD -i wg0 -j ACCEPT 2>/dev/null || iptables -A FORWARD -i wg0 -j ACCEPT
-    iptables -C FORWARD -o wg0 -j ACCEPT 2>/dev/null || iptables -A FORWARD -o wg0 -j ACCEPT
+    # Allow forwarding between wg0 and TUN in ALL iptables backends.
+    # Docker on Unraid uses iptables-legacy with FORWARD DROP policy.
+    ipt_add FORWARD "-i wg0"
+    ipt_add FORWARD "-o wg0"
 
     if [ "$changed" = true ]; then
         echo "[routing] Policy routing configured: ${WG_SUBNET} -> table ${TABLE} -> ${TUN_DEV} -> Mihomo"
     fi
 
     # Debug: show current state
-    echo "[routing] State: rules=$(ip rule show | grep -c "lookup ${TABLE}"), route=$(ip route show table "${TABLE}" 2>/dev/null | head -1), rp_filter_Meta=$(sysctl -n net.ipv4.conf.${TUN_DEV}.rp_filter 2>/dev/null || echo '?'), rp_filter_wg0=$(sysctl -n net.ipv4.conf.wg0.rp_filter 2>/dev/null || echo '?')"
+    local legacy_fwd="N/A"
+    if command -v iptables-legacy >/dev/null 2>&1; then
+        legacy_fwd=$(iptables-legacy -L FORWARD -n 2>/dev/null | grep -c "wg0" || echo "0")
+    fi
+    echo "[routing] State: rules=$(ip rule show | grep -c "lookup ${TABLE}"), route=$(ip route show table "${TABLE}" 2>/dev/null | head -1), rp_filter_Meta=$(sysctl -n net.ipv4.conf.${TUN_DEV}.rp_filter 2>/dev/null || echo '?'), rp_filter_wg0=$(sysctl -n net.ipv4.conf.wg0.rp_filter 2>/dev/null || echo '?'), legacy_wg0_rules=${legacy_fwd}"
 
     return 0
 }

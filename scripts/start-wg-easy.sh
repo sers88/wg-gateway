@@ -18,11 +18,12 @@ export WG_HOST="${WG_HOST:-0.0.0.0}"
 # Override wg-easy's default POST_UP to exclude MASQUERADE.
 # Gateway mode routes traffic through Mihomo TUN instead of direct NAT.
 # wg-easy uses JS || for defaults, so empty string falls through — use a real command.
+# Apply to both iptables backends: Unraid Docker uses iptables-legacy.
 if [ -z "${WG_POST_UP+x}" ]; then
-    export WG_POST_UP="iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT"
+    export WG_POST_UP="iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables-legacy -A FORWARD -i %i -j ACCEPT 2>/dev/null; iptables-legacy -A FORWARD -o %i -j ACCEPT 2>/dev/null; true"
 fi
 if [ -z "${WG_POST_DOWN+x}" ]; then
-    export WG_POST_DOWN="iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT"
+    export WG_POST_DOWN="iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables-legacy -D FORWARD -i %i -j ACCEPT 2>/dev/null; iptables-legacy -D FORWARD -o %i -j ACCEPT 2>/dev/null; true"
 fi
 
 # Optional password protection

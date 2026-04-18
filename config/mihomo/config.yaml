@@ -22,7 +22,7 @@ secret: ""
 tun:
   enable: true
   stack: mixed
-  auto-route: false
+  auto-route: true
   auto-detect-interface: true
   dns-hijack:
     - any:53

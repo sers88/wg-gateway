@@ -15,11 +15,11 @@ A single Docker image that combines WireGuard server management, a proxy/routing
                       ┌──────────────────────────────────────────┐
                       │          wg-gateway container            │
                       │                                          │
- WireGuard  ──udp──► │  wg0 ──policy routing──► Mihomo TUN      │
- Client               │         (table 666)       │              │
-                      │                           ├─► PROXY ──► Proxy Server ──► Internet
-                      │                           │              │
-                      │                           └─► DIRECT ──► Internet
+ WireGuard  ──udp──► │  wg0 ──Mihomo auto-route──► Mihomo TUN   │
+ Client               │                              │           │
+                      │                              ├─► PROXY ──► Proxy Server ──► Internet
+                      │                              │           │
+                      │                              └─► DIRECT ──► Internet
                       │                                          │
                       │  wg-easy UI (:51821)  Mihomo UI (:51888) │
                       └──────────────────────────────────────────┘
@@ -29,13 +29,12 @@ A single Docker image that combines WireGuard server management, a proxy/routing
 
 1. WireGuard client connects to the server on **UDP 51820**.
 2. Decrypted traffic appears on the **wg0** interface inside the container.
-3. A policy routing rule (`ip rule`) matches traffic from the WireGuard subnet and directs it to a custom routing table.
-4. That table sends all traffic through **Mihomo's TUN device**.
-5. Mihomo evaluates rules (domain, IP CIDR, GeoIP, rule-providers, etc.) and decides per connection: **PROXY** or **DIRECT**.
-6. Direct traffic exits via the host's real network interface. Proxy traffic exits through the configured proxy server.
-7. Mihomo's own outbound connections use the main routing table, avoiding loops.
+3. Mihomo's `auto-route` adds policy routing rules that direct traffic through the **TUN device**.
+4. Mihomo evaluates rules (domain, IP CIDR, GeoIP, rule-providers, etc.) and decides per connection: **PROXY** or **DIRECT**.
+5. Direct traffic exits via the host's real network interface. Proxy traffic exits through the configured proxy server.
+6. Mihomo's own outbound connections are fwmark-tagged to bypass the TUN, preventing routing loops.
 
-A background routing daemon monitors the interfaces and re-applies policy routes if Mihomo or wg-easy restart and recreate their TUN/WireGuard devices.
+A background daemon monitors interfaces and re-applies iptables FORWARD rules for wg0 if they get flushed.
 
 ### Why host network mode
 
@@ -210,6 +209,9 @@ The routing daemon automatically re-applies policy routes when the TUN device is
 | `WG_EASY_PASSWORD` | _(empty)_ | Bcrypt hash for wg-easy UI auth (not plaintext — generate with `docker run -it ghcr.io/wg-easy/wg-easy wgpw YOUR_PASSWORD`) |
 | `MIHOMO_PORT` | `51888` | Proxy engine external controller port |
 | `MIHOMO_SECRET` | _(empty)_ | Secret for proxy engine API |
+| `TUN_DEV` | `Meta` | Mihomo TUN device name |
+| `ROUTE_CHECK_INTERVAL` | `30` | Seconds between iptables rule checks |
+| `ROUTE_WAIT` | `90` | Max seconds to wait for interfaces |
 | `TZ` | `UTC` | Timezone |
 
 ## Unraid deployment
@@ -255,10 +257,10 @@ docker run -d \
 
 - **Do not** use Unraid's built-in WireGuard manager alongside this container for the same port — they will conflict.
 - If you already have Unraid's WireVPN active, either stop it or use a different port for wg-gateway.
-- The container modifies `ip rule` and `ip route` at the host level. This is scoped to the WireGuard subnet and the custom table (666) and will not affect Unraid's normal networking.
+- The container uses Mihomo's `auto-route` to manage policy routing. Mihomo adds `ip rule` and `ip route` entries at the host level, scoped to its own routing table. This will not affect Unraid's normal networking — Mihomo's fwmark bypass ensures its own connections use the main routing table.
 - **Forwarding chain**: Docker on Unraid sets `iptables FORWARD` policy to `DROP` by default. The container adds explicit `ACCEPT` rules for the `wg0` interface to handle this. If clients can connect but have no internet, check: `iptables -L FORWARD -n` — you should see `ACCEPT` entries for `wg0`.
 - To view logs: `docker exec wg-gateway cat /data/logs/supervisord.log`
-- To check routing status: `docker exec wg-gateway ip rule list` and `docker exec wg-gateway ip route show table 666`
+- To check routing status: `docker exec wg-gateway ip rule list` and `docker exec wg-gateway ip route show table all`
 
 ## Known limitations
 

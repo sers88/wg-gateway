@@ -1,12 +1,16 @@
 #!/bin/bash
-# iptables FORWARD daemon: ensures wg0 forwarding rules survive restarts.
-# Runs as a long-lived supervisord service.
+# Policy routing daemon: routes WireGuard client traffic through Mihomo TUN.
+# Runs as a long-lived supervisord service so routing is re-applied
+# automatically if Mihomo or wg-easy restart and interfaces are recreated.
 #
-# With Mihomo auto-route: true, Mihomo manages all ip rule/ip route entries.
-# This script only handles iptables FORWARD rules that Docker's default DROP
-# policy would otherwise block.
+# Mihomo runs with auto-route: false — we manage routing ourselves so ONLY
+# WG client traffic goes through the TUN (not all host traffic).
+#
+# NOTE: Debian bookworm iproute2 does NOT support "ip rule replace".
+# Use "ip rule add" with existence checks instead.
 
 TUN_DEV="${TUN_DEV:-Meta}"
+TABLE="${ROUTE_TABLE:-666}"
 CHECK_INTERVAL="${ROUTE_CHECK_INTERVAL:-30}"
 MAX_WAIT="${ROUTE_WAIT:-90}"
 
@@ -26,24 +30,72 @@ done
 
 echo "[routing] Both interfaces are up."
 
-apply_iptables() {
+apply_routing() {
+    # Disable rp_filter on TUN and wg0 — prevents kernel from dropping
+    # packets with asymmetric routing paths (WG ↔ TUN).
+    sysctl -w net.ipv4.conf.${TUN_DEV}.rp_filter=0 > /dev/null 2>&1 || true
+    sysctl -w net.ipv4.conf.wg0.rp_filter=0 > /dev/null 2>&1 || true
+
+    # Get WG subnet from the wg0 interface
+    WG_SUBNET=$(ip -4 addr show wg0 2>/dev/null | grep -oP 'inet \K[\d.]+/\d+' | head -1) || true
+    if [ -z "$WG_SUBNET" ]; then
+        echo "[routing] Could not determine WireGuard subnet from wg0. Retrying later."
+        return 1
+    fi
+
     local changed=false
 
+    # Default route through Mihomo TUN in our custom table
+    if ! ip route show table "${TABLE}" 2>/dev/null | grep -q "dev ${TUN_DEV}"; then
+        if ip route replace default dev "${TUN_DEV}" table "${TABLE}"; then
+            changed=true
+        else
+            echo "[routing] ERROR: Failed to add route dev ${TUN_DEV} table ${TABLE}"
+        fi
+    fi
+
+    # Priority 100: bypass Mihomo for traffic TO private/local networks.
+    for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 127.0.0.0/8; do
+        if ! ip rule show | grep -q "to ${net} lookup main"; then
+            if ip rule add to "${net}" table main pref 100; then
+                changed=true
+            else
+                echo "[routing] WARNING: Failed to add bypass rule for ${net}"
+            fi
+        fi
+    done
+
+    # Priority 200: traffic FROM WireGuard clients goes through Mihomo TUN.
+    if ! ip rule show | grep -q "from ${WG_SUBNET} lookup ${TABLE}"; then
+        if ip rule add from "${WG_SUBNET}" table "${TABLE}" pref 200; then
+            changed=true
+        else
+            echo "[routing] ERROR: Failed to add policy rule for ${WG_SUBNET}"
+        fi
+    fi
+
     # Allow forwarding between wg0 and TUN (survives Docker's FORWARD DROP policy)
-    iptables -C FORWARD -i wg0 -j ACCEPT 2>/dev/null || { iptables -A FORWARD -i wg0 -j ACCEPT; changed=true; }
-    iptables -C FORWARD -o wg0 -j ACCEPT 2>/dev/null || { iptables -A FORWARD -o wg0 -j ACCEPT; changed=true; }
+    iptables -C FORWARD -i wg0 -j ACCEPT 2>/dev/null || iptables -A FORWARD -i wg0 -j ACCEPT
+    iptables -C FORWARD -o wg0 -j ACCEPT 2>/dev/null || iptables -A FORWARD -o wg0 -j ACCEPT
 
     if [ "$changed" = true ]; then
-        echo "[routing] iptables FORWARD rules applied for wg0"
+        echo "[routing] Policy routing configured: ${WG_SUBNET} -> table ${TABLE} -> ${TUN_DEV} -> Mihomo"
     fi
+
+    # Debug: show current state
+    echo "[routing] State: rules=$(ip rule show | grep -c "lookup ${TABLE}"), route=$(ip route show table "${TABLE}" 2>/dev/null | head -1), rp_filter_Meta=$(sysctl -n net.ipv4.conf.${TUN_DEV}.rp_filter 2>/dev/null || echo '?'), rp_filter_wg0=$(sysctl -n net.ipv4.conf.wg0.rp_filter 2>/dev/null || echo '?')"
+
+    return 0
 }
 
 # Initial apply
-apply_iptables
+apply_routing
 
-# Monitor loop: re-apply iptables rules if they get flushed
+# Monitor loop: re-apply routing if interfaces are recreated (e.g. Mihomo restart)
 echo "[routing] Monitoring active (interval: ${CHECK_INTERVAL}s)..."
 while true; do
     sleep "${CHECK_INTERVAL}"
-    apply_iptables
+    if [ -d "/sys/class/net/wg0" ] && [ -d "/sys/class/net/${TUN_DEV}" ]; then
+        apply_routing
+    fi
 done

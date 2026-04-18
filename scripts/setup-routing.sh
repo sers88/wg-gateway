@@ -6,6 +6,9 @@
 # Mihomo adds its own ip rules around priority 5200+ (fwmark + catch-all).
 # Our rules MUST have lower priority numbers (higher precedence) so WG client
 # traffic is captured BEFORE Mihomo's catch-all.
+#
+# NOTE: Debian bookworm iproute2 does NOT support "ip rule replace".
+# Use "ip rule add" with existence checks instead.
 
 TUN_DEV="${TUN_DEV:-Meta}"
 TABLE="${ROUTE_TABLE:-666}"
@@ -48,18 +51,20 @@ apply_routing() {
     fi
 
     # Priority 100: bypass Mihomo for traffic TO private/local networks.
-    # These must come before the WG capture rule so local traffic doesn't loop.
     for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 127.0.0.0/8; do
         if ! ip rule show | grep -q "to ${net} lookup main"; then
-            ip rule replace to "${net}" table main priority 100 || \
+            if ip rule add to "${net}" table main pref 100; then
+                changed=true
+            else
                 echo "[routing] WARNING: Failed to add bypass rule for ${net}"
+            fi
         fi
     done
 
     # Priority 200: traffic FROM WireGuard clients goes through Mihomo TUN.
     # Must be < 5200 (Mihomo's catch-all) so it is evaluated first.
     if ! ip rule show | grep -q "from ${WG_SUBNET} lookup ${TABLE}"; then
-        if ip rule replace from "${WG_SUBNET}" table "${TABLE}" priority 200; then
+        if ip rule add from "${WG_SUBNET}" table "${TABLE}" pref 200; then
             changed=true
         else
             echo "[routing] ERROR: Failed to add policy rule for ${WG_SUBNET}"

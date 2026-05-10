@@ -10,7 +10,7 @@ FROM debian:bookworm-slim
 ARG MIHOMO_VERSION=v1.19.23
 ARG METACUBEXD_VERSION=v1.244.2
 
-# Runtime dependencies
+# Runtime dependencies + Node.js 20.x (required by wg-easy)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wireguard-tools \
     iptables \
@@ -20,10 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     supervisor \
     procps \
-    && rm -rf /var/lib/apt/lists/*
-
-# Node.js 20.x (required by wg-easy)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
@@ -62,8 +59,5 @@ VOLUME ["/data/wireguard", "/data/mihomo", "/data/ui", "/data/logs"]
 # wg-easy UI:     51821/tcp
 # Mihomo UI/API:  51888/tcp
 EXPOSE 51820/udp 51821/tcp 51888/tcp
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD ["/scripts/healthcheck.sh"]
 
 ENTRYPOINT ["/scripts/entrypoint.sh"]

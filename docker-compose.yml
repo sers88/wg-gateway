@@ -29,6 +29,8 @@ services:
       - ./data/logs:/data/logs
     env_file:
       - .env
+    mem_limit: 512m
+    cpus: 2.0
     healthcheck:
       test: ["CMD", "/scripts/healthcheck.sh"]
       interval: 30s

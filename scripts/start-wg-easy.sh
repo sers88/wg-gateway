@@ -26,7 +26,7 @@ if [ -z "${WG_POST_DOWN+x}" ]; then
     export WG_POST_DOWN="iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables-legacy -D FORWARD -i %i -j ACCEPT 2>/dev/null; iptables-legacy -D FORWARD -o %i -j ACCEPT 2>/dev/null; true"
 fi
 
-# Optional password protection
+# wg-easy v14 requires PASSWORD_HASH (bcrypt). WG_EASY_PASSWORD is a bcrypt hash from .env.
 if [ -n "$WG_EASY_PASSWORD" ]; then
     export PASSWORD_HASH="${WG_EASY_PASSWORD}"
 fi

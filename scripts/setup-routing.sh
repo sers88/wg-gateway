@@ -48,7 +48,7 @@ apply_routing() {
     sysctl -w net.ipv4.conf.wg0.rp_filter=0 > /dev/null 2>&1 || true
 
     # Get WG subnet from the wg0 interface
-    WG_SUBNET=$(ip -4 addr show wg0 2>/dev/null | grep -oP 'inet \K[\d.]+/\d+' | head -1) || true
+    WG_SUBNET=$(ip -4 addr show wg0 2>/dev/null | grep -o 'inet [0-9.]\+/[0-9]\+' | awk '{print $2}' | head -1) || true
     if [ -z "$WG_SUBNET" ]; then
         echo "[routing] Could not determine WireGuard subnet from wg0. Retrying later."
         return 1
@@ -107,10 +107,28 @@ apply_routing() {
 # Initial apply
 apply_routing
 
-# Monitor loop: re-apply routing if interfaces are recreated (e.g. Mihomo restart)
-echo "[routing] Monitoring active (interval: ${CHECK_INTERVAL}s)..."
+# Event-driven: react instantly to interface changes via ip monitor.
+# Fallback periodic re-apply in case ip monitor misses an event.
+FALLBACK_INTERVAL=$((CHECK_INTERVAL * 2))
+echo "[routing] Monitoring active (event-driven + fallback every ${FALLBACK_INTERVAL}s)..."
+
+last_fallback=$(date +%s)
+
+ip monitor link 2>/dev/null | while read -r _event; do
+    now=$(date +%s)
+    # Throttle: skip if less than 2s since last apply
+    if [ $((now - last_fallback)) -lt 2 ]; then
+        continue
+    fi
+    if [ -d "/sys/class/net/wg0" ] && [ -d "/sys/class/net/${TUN_DEV}" ]; then
+        apply_routing
+        last_fallback=$now
+    fi
+done &
+
+# Fallback loop in case ip monitor exits or misses events
 while true; do
-    sleep "${CHECK_INTERVAL}"
+    sleep "${FALLBACK_INTERVAL}"
     if [ -d "/sys/class/net/wg0" ] && [ -d "/sys/class/net/${TUN_DEV}" ]; then
         apply_routing
     fi

@@ -1,0 +1,14 @@
+.git/
+.github/
+.idea/
+.claude/
+data/
+node_modules/
+.env
+*.log
+README.md
+LICENSE
+THIRD_PARTY_NOTICES.md
+docker-compose.yml
+Dockerfile
+.dockerignore

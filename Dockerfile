@@ -4,7 +4,19 @@
 # --- Stage 1: wg-easy app files ---
 FROM ghcr.io/wg-easy/wg-easy:15 AS wg-easy-source
 
-# --- Stage 2: Final image ---
+# --- Stage 2: Build libsql for Debian/glibc ---
+FROM debian:bookworm-slim AS libsql-build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+RUN npm install --no-save --omit=dev libsql \
+    && echo "libsql build OK"
+
+# --- Stage 3: Final image ---
 FROM debian:bookworm-slim
 
 ARG MIHOMO_VERSION=v1.19.25
@@ -26,10 +38,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # wg-easy v15 app — copy built Nuxt output from upstream image.
-# Upstream is Alpine/musl-based; we reinstall libsql for Debian/glibc.
+# Upstream is Alpine/musl-based; we replace the node_modules with the
+# Debian/glibc-compatible libsql built in Stage 2.
 COPY --from=wg-easy-source /app /app
-RUN cd /app/server && rm -rf node_modules && npm install --no-save --omit=dev libsql \
-    && echo "wg-easy dependencies OK"
+COPY --from=libsql-build /app/node_modules /app/server/node_modules
 
 # Mihomo core binary
 # Asset naming: mihomo-linux-amd64-<tag>.gz (adjust build arg if upstream changes)

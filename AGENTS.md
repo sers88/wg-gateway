@@ -1,0 +1,52 @@
+# AGENTS.md
+
+## Project overview
+
+Single Docker image that bundles **wg-easy** (WireGuard management), **Mihomo** (proxy/routing engine), and **metacubexd** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
+
+## Build and run
+
+```bash
+# Build locally
+docker compose build
+# Run (requires .env with WG_HOST set)
+cp .env.example .env && docker compose up -d
+```
+
+No tests, lint, or typecheck exist. The only validation is whether the Docker image builds and the services start.
+
+## Directory layout
+
+- `Dockerfile` — multi-stage build: copies wg-easy from upstream image, downloads Mihomo binary + metacubexd UI
+- `scripts/` — entrypoint and long-running service scripts run by supervisord
+- `config/supervisord.conf` — process manager: starts mihomo → wg-easy → setup-routing daemon
+- `config/mihomo/config.yaml` — default Mihomo config seeded to `/data/mihomo/config.yaml` on first start
+- `templates/wg-gateway.xml` — Unraid Community Applications template
+
+## Key architecture facts
+
+- **Mihomo runs with `auto-route: false`** — routing is managed by `scripts/setup-routing.sh`, which runs as a persistent daemon under supervisord. This script handles policy routing so only WireGuard client traffic goes through the TUN, not all host traffic.
+- **Policy routing uses table 666, ip rule priority 200.** Traffic from the WireGuard subnet is matched and directed to that table, which has a default route through Mihomo's TUN device.
+- **wg-easy must live at `/app`** — its `Server.js` hardcodes `publicDir='/app/www'` (line in Dockerfile comment).
+- **wg-easy is re-installed** — node_modules from the upstream image are removed and `npm ci --omit=dev` is re-run because the upstream image is Alpine/musl-based but this image is Debian/glibc.
+- **rp_filter must be 0** (not 2) — WG↔TUN traffic has entirely asymmetric paths, so even loose mode (`2`) drops packets.
+- **Both iptables backends are handled** — Unraid Docker uses `iptables-legacy` with FORWARD DROP policy; other systems use `iptables-nft`. All iptables commands in scripts target both.
+
+## CI
+
+- `.github/workflows/docker.yml` — builds on push to `main`, pushes `latest` + short SHA to Docker Hub
+- `.github/workflows/release.yml` — on `v*` tags, builds and pushes semver tags + `latest`, creates GitHub Release with auto-generated notes
+- Platform: `linux/amd64` only
+- Image: `ksantd/wg-gateway` on Docker Hub
+
+## Editing scripts
+
+All scripts in `scripts/` are bash and must remain compatible with Debian bookworm-slim. Notable constraint: **`ip rule replace` is not available** on Debian bookworm's iproute2 — use `ip rule add` with existence checks instead (see `setup-routing.sh`).
+
+## Mihomo config changes
+
+After editing `/data/mihomo/config.yaml`, reload without restarting the whole container:
+```bash
+docker exec wg-gateway supervisorctl restart mihomo
+```
+The routing daemon automatically re-applies policy routes when the TUN device is recreated.

@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Single Docker image that bundles **wg-easy** (WireGuard management), **Mihomo** (proxy/routing engine), and **metacubexd** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
+Single Docker image that bundles **wg-easy v15** (WireGuard management), **Mihomo v1.19.25** (proxy/routing engine), and **metacubexd v1.248.1** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
 
 ## Build and run
 
@@ -27,8 +27,8 @@ No tests, lint, or typecheck exist. The only validation is whether the Docker im
 
 - **Mihomo runs with `auto-route: false`** — routing is managed by `scripts/setup-routing.sh`, which runs as a persistent daemon under supervisord. This script handles policy routing so only WireGuard client traffic goes through the TUN, not all host traffic.
 - **Policy routing uses table 666, ip rule priority 200.** Traffic from the WireGuard subnet is matched and directed to that table, which has a default route through Mihomo's TUN device.
-- **wg-easy must live at `/app`** — its `Server.js` hardcodes `publicDir='/app/www'` (line in Dockerfile comment).
-- **wg-easy is re-installed** — node_modules from the upstream image are removed and `npm ci --omit=dev` is re-run because the upstream image is Alpine/musl-based but this image is Debian/glibc.
+- **wg-easy v15 entrypoint** — upstream switched to a Nuxt/Nitro compiled app. Entrypoint is `dumb-init node server/index.mjs` from `/app`. The `libsql` native module is re-installed for Debian/glibc because the upstream image is Alpine/musl-based.
+- **wg-easy v15 uses INIT_* env vars for unattended setup** — on first start the container auto-configures the admin user, WG host/port, DNS and Allowed IPs via `INIT_ENABLED=true` so the Web UI wizard is skipped.
 - **rp_filter must be 0** (not 2) — WG↔TUN traffic has entirely asymmetric paths, so even loose mode (`2`) drops packets.
 - **Both iptables backends are handled** — Unraid Docker uses `iptables-legacy` with FORWARD DROP policy; other systems use `iptables-nft`. All iptables commands in scripts target both.
 

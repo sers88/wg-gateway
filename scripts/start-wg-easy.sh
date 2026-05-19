@@ -1,38 +1,44 @@
 #!/bin/bash
 set -e
 
-# Configure wg-easy environment
-export WG_PATH="${WG_PATH:-/data/wireguard}"
-export WG_PORT="${WG_PORT:-51820}"
-export WG_DEFAULT_DNS="${WG_DEFAULT_DNS:-1.1.1.1}"
-export WG_ALLOWED_IPS="${WG_ALLOWED_IPS:-0.0.0.0/0,::/0}"
-export WG_PERSISTENT_KEEPALIVE="${WG_PERSISTENT_KEEPALIVE:-25}"
+# Configure wg-easy v15 minimal environment variables.
+# v15 no longer accepts WG_HOST, WG_PORT, PASSWORD_HASH, WG_POST_UP, etc.
+# Those settings are managed via the Web UI or INIT_* variables for unattended setup.
 export PORT="${WG_EASY_PORT:-51821}"
+export HOST="${HOST:-0.0.0.0}"
+export INSECURE="${INSECURE:-true}"
 
-if [ -z "${WG_HOST}" ]; then
-    echo "[wg-easy] WARNING: WG_HOST is not set. Client configs will not have the correct server address."
-    echo "[wg-easy] Set WG_HOST to your server's public IP or hostname."
-fi
-export WG_HOST="${WG_HOST:-0.0.0.0}"
+# Unattended setup — skip the Web UI wizard on first start by providing
+# all mandatory INIT_* variables. Group 1 (username, password, host, port)
+# is required to bypass the wizard.
+if [ -n "$WG_HOST" ]; then
+    export INIT_ENABLED="true"
+    export INIT_USERNAME="${WG_EASY_INIT_USERNAME:-admin}"
 
-# Override wg-easy's default POST_UP to exclude MASQUERADE.
-# Gateway mode routes traffic through Mihomo TUN instead of direct NAT.
-# wg-easy uses JS || for defaults, so empty string falls through — use a real command.
-# Apply to both iptables backends: Unraid Docker uses iptables-legacy.
-if [ -z "${WG_POST_UP+x}" ]; then
-    export WG_POST_UP="iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables-legacy -A FORWARD -i %i -j ACCEPT 2>/dev/null; iptables-legacy -A FORWARD -o %i -j ACCEPT 2>/dev/null; true"
-fi
-if [ -z "${WG_POST_DOWN+x}" ]; then
-    export WG_POST_DOWN="iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables-legacy -D FORWARD -i %i -j ACCEPT 2>/dev/null; iptables-legacy -D FORWARD -o %i -j ACCEPT 2>/dev/null; true"
-fi
+    if [ -z "$WG_EASY_INIT_PASSWORD" ]; then
+        echo "[wg-easy] ERROR: WG_EASY_INIT_PASSWORD must be set for v15 unattended setup."
+        echo "[wg-easy] This is a plaintext password (not a bcrypt hash) used to create the admin account."
+        exit 1
+    fi
+    export INIT_PASSWORD="$WG_EASY_INIT_PASSWORD"
 
-# wg-easy v14 requires PASSWORD_HASH (bcrypt). WG_EASY_PASSWORD is a bcrypt hash from .env.
-if [ -n "$WG_EASY_PASSWORD" ]; then
-    export PASSWORD_HASH="${WG_EASY_PASSWORD}"
+    export INIT_HOST="$WG_HOST"
+    export INIT_PORT="${WG_PORT:-51820}"
+    export INIT_DNS="${WG_DEFAULT_DNS:-1.1.1.1}"
+    export INIT_IPV4_CIDR="${INIT_IPV4_CIDR:-10.8.0.0/24}"
+    export INIT_IPV6_CIDR="${INIT_IPV6_CIDR:-2001:0DB8::/32}"
+    export INIT_ALLOWED_IPS="${WG_ALLOWED_IPS:-0.0.0.0/0,::/0}"
+
+    echo "[wg-easy] Unattended setup enabled."
+    echo "[wg-easy]   Admin user: ${INIT_USERNAME}"
+    echo "[wg-easy]   WG host:    ${INIT_HOST}:${INIT_PORT}"
+    echo "[wg-easy]   Allowed IPs: ${INIT_ALLOWED_IPS}"
+else
+    echo "[wg-easy] WARNING: WG_HOST is not set. Unattended setup disabled — the Web UI setup wizard will run on first start."
+    export INIT_ENABLED="false"
 fi
 
 echo "[wg-easy] Starting on port ${PORT}..."
-echo "[wg-easy] WG_HOST=${WG_HOST}, WG_PORT=${WG_PORT}"
 
 cd /app
-exec node server.js
+exec dumb-init node server/index.mjs

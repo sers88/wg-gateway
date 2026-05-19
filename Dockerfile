@@ -2,15 +2,27 @@
 # Builds a single image combining wg-easy, Mihomo, and metacubexd.
 
 # --- Stage 1: wg-easy app files ---
-FROM ghcr.io/wg-easy/wg-easy:14 AS wg-easy-source
+FROM ghcr.io/wg-easy/wg-easy:15 AS wg-easy-source
 
-# --- Stage 2: Final image ---
+# --- Stage 2: Build libsql for Debian/glibc ---
+FROM debian:bookworm-slim AS libsql-build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+RUN npm install --no-save --omit=dev libsql \
+    && echo "libsql build OK"
+
+# --- Stage 3: Final image ---
 FROM debian:bookworm-slim
 
-ARG MIHOMO_VERSION=v1.19.23
-ARG METACUBEXD_VERSION=v1.244.2
+ARG MIHOMO_VERSION=v1.19.25
+ARG METACUBEXD_VERSION=v1.248.1
 
-# Runtime dependencies + Node.js 20.x (required by wg-easy)
+# Runtime dependencies + Node.js 24.x (required by wg-easy v15)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wireguard-tools \
     iptables \
@@ -20,16 +32,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     supervisor \
     procps \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    dumb-init \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# wg-easy app — copy source then install dependencies for Debian/glibc.
-# Must live at /app because Server.js hardcodes publicDir='/app/www'.
+# wg-easy v15 app — copy built Nuxt output from upstream image.
+# Upstream is Alpine/musl-based; we replace the node_modules with the
+# Debian/glibc-compatible libsql built in Stage 2.
 COPY --from=wg-easy-source /app /app
-RUN cd /app && rm -rf node_modules && npm ci --omit=dev \
-    && node -e "require('bcryptjs')" \
-    && echo "wg-easy dependencies OK"
+COPY --from=libsql-build /app/node_modules /app/server/node_modules
 
 # Mihomo core binary
 # Asset naming: mihomo-linux-amd64-<tag>.gz (adjust build arg if upstream changes)

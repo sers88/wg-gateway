@@ -7,6 +7,8 @@
 
 **WireGuard VPN gateway with rule-based proxy routing.**
 
+[Русский](README.ru.md)
+
 A single Docker image that combines WireGuard server management, a proxy/routing engine (Mihomo), and web UIs for both. WireGuard clients connect and all their traffic is routed through the proxy engine, where per-rule decisions determine whether traffic goes through a **proxy** or **direct** to the internet.
 
 ## Architecture

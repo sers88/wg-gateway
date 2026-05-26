@@ -16,7 +16,7 @@ validate_port() {
 
 # WG_HOST: if set, must be non-empty and look like an IP or hostname
 if [ -n "${WG_HOST:-}" ]; then
-    if echo "$WG_HOST" | grep -qE '[^a-zA-Z0-9.\-:]'; then
+    if echo "$WG_HOST" | grep -qE '[^a-zA-Z0-9.:\-]'; then
         echo "[wg-gateway] ERROR: WG_HOST contains invalid characters: '$WG_HOST'"
         exit 1
     fi

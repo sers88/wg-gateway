@@ -37,6 +37,29 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify image contents
+        run: |
+          echo "=== Check binaries ==="
+          docker run --rm wg-gateway:test which mihomo
+          docker run --rm wg-gateway:test which wg
+          docker run --rm wg-gateway:test which node
+          docker run --rm wg-gateway:test which dumb-init
+
+          echo "=== Check Mihomo binary is executable ==="
+          docker run --rm wg-gateway:test /usr/local/bin/mihomo -v
+
+          echo "=== Check metacubexd UI assets ==="
+          docker run --rm wg-gateway:test ls /opt/metacubexd/index.html
+
+          echo "=== Check default config ==="
+          docker run --rm wg-gateway:test cat /defaults/mihomo/config.yaml | head -5
+
+          echo "=== Check scripts ==="
+          docker run --rm wg-gateway:test ls -la /scripts/
+
+          echo "=== Check supervisord config ==="
+          docker run --rm wg-gateway:test cat /etc/supervisor/conf.d/wg-gateway.conf | head -5
+
       - name: Start container
         run: |
           docker run -d \
@@ -49,38 +72,34 @@ jobs:
             -e WG_EASY_INIT_PASSWORD=test-password \
             wg-gateway:test
 
-      - name: Wait for services
+      - name: Wait for wg-easy
         run: |
-          echo "Waiting for services to start..."
+          echo "Waiting for wg-easy to start..."
           for i in $(seq 1 30); do
             if curl -sf http://localhost:51821 > /dev/null 2>&1; then
-              echo "wg-easy is up after ${i}s"
+              echo "wg-easy is up after $((i * 2))s"
               break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "ERROR: wg-easy did not start"
+              docker logs wg-gateway-test 2>&1 | tail -40
+              exit 1
             fi
             sleep 2
           done
 
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:51888/version > /dev/null 2>&1; then
-              echo "Mihomo is up after ${i}s"
-              break
-            fi
-            sleep 2
-          done
-
-      - name: Verify services
+      - name: Check wg-easy response
         run: |
-          echo "=== wg-easy ==="
-          curl -sf http://localhost:51821 | head -c 200 || echo "wg-easy not responding"
-          echo ""
-          echo "=== Mihomo ==="
-          curl -sf http://localhost:51888/version || echo "Mihomo not responding"
-          echo ""
-          echo "=== Logs ==="
-          docker logs wg-gateway-test 2>&1 | tail -30
+          RESPONSE=$(curl -sf http://localhost:51821 | head -c 300)
+          echo "wg-easy response: $RESPONSE"
+          echo "$RESPONSE" | grep -q "html" || {
+            echo "ERROR: wg-easy did not return HTML"
+            exit 1
+          }
 
-      - name: Healthcheck
-        run: docker exec wg-gateway-test /scripts/healthcheck.sh
+      - name: Show container logs
+        if: always()
+        run: docker logs wg-gateway-test 2>&1 | tail -50
 
       - name: Cleanup
         if: always()

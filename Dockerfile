@@ -2,7 +2,7 @@
 # Builds a single image combining wg-easy, Mihomo, and metacubexd.
 
 # --- Stage 1: wg-easy app files ---
-FROM ghcr.io/wg-easy/wg-easy:15 AS wg-easy-source
+FROM ghcr.io/wg-easy/wg-easy:15.3.0 AS wg-easy-source
 
 # --- Stage 2: Build native modules for Debian/glibc ---
 FROM debian:bookworm-slim AS native-build
@@ -22,7 +22,7 @@ RUN npm install --no-save --omit=dev libsql argon2 \
 FROM debian:bookworm-slim
 
 ARG MIHOMO_VERSION=v1.19.25
-ARG METACUBEXD_VERSION=v1.248.1
+ARG METACUBEXD_VERSION=v1.248.5
 
 # Runtime dependencies + Node.js 24.x (required by wg-easy v15)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# wg-easy v15 app — copy built Nuxt output from upstream image.
+# wg-easy v15.3.0 app — copy built Nuxt output from upstream image.
 # Upstream is Alpine/musl-based; we replace the node_modules with
 # Debian/glibc-compatible native modules (libsql, argon2) from Stage 2.
 COPY --from=wg-easy-source /app /app

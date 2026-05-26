@@ -37,6 +37,7 @@ ipt_add() {
     local match="$1"; shift
     for ipt in iptables-legacy iptables; do
         command -v "$ipt" >/dev/null 2>&1 || continue
+        # shellcheck disable=SC2086
         $ipt -C "$chain" $match -j ACCEPT 2>/dev/null || $ipt -I "$chain" 1 $match -j ACCEPT 2>/dev/null || true
     done
 }
@@ -44,7 +45,7 @@ ipt_add() {
 apply_routing() {
     # Disable rp_filter on TUN and wg0 — prevents kernel from dropping
     # packets with asymmetric routing paths (WG <-> TUN).
-    sysctl -w net.ipv4.conf.${TUN_DEV}.rp_filter=0 > /dev/null 2>&1 || true
+    sysctl -w "net.ipv4.conf.${TUN_DEV}.rp_filter=0" > /dev/null 2>&1 || true
     sysctl -w net.ipv4.conf.wg0.rp_filter=0 > /dev/null 2>&1 || true
 
     # Get WG subnet from the wg0 interface
@@ -99,7 +100,8 @@ apply_routing() {
     if command -v iptables-legacy >/dev/null 2>&1; then
         legacy_fwd=$(iptables-legacy -L FORWARD -n 2>/dev/null | grep -c "wg0" || echo "0")
     fi
-    echo "[routing] State: rules=$(ip rule show | grep -c "lookup ${TABLE}"), route=$(ip route show table "${TABLE}" 2>/dev/null | head -1), rp_filter_Meta=$(sysctl -n net.ipv4.conf.${TUN_DEV}.rp_filter 2>/dev/null || echo '?'), rp_filter_wg0=$(sysctl -n net.ipv4.conf.wg0.rp_filter 2>/dev/null || echo '?'), legacy_wg0_rules=${legacy_fwd}"
+    # shellcheck disable=SC2086
+    echo "[routing] State: rules=$(ip rule show | grep -c "lookup ${TABLE}"), route=$(ip route show table "${TABLE}" 2>/dev/null | head -1), rp_filter_${TUN_DEV}=$(sysctl -n "net.ipv4.conf.${TUN_DEV}.rp_filter" 2>/dev/null || echo '?'), rp_filter_wg0=$(sysctl -n net.ipv4.conf.wg0.rp_filter 2>/dev/null || echo '?'), legacy_wg0_rules=${legacy_fwd}"
 
     return 0
 }

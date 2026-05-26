@@ -7,8 +7,13 @@ node_modules/
 .env
 *.log
 README.md
+README.ru.md
+AGENTS.md
 LICENSE
 THIRD_PARTY_NOTICES.md
+CONTRIBUTING.md
+CHANGELOG.md
 docker-compose.yml
 Dockerfile
 .dockerignore
+templates/

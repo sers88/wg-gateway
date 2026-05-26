@@ -114,22 +114,31 @@ echo "[routing] Monitoring active (event-driven + fallback every ${FALLBACK_INTE
 
 last_fallback=$(date +%s)
 
-ip monitor link 2>/dev/null | while read -r _event; do
-    now=$(date +%s)
-    # Throttle: skip if less than 2s since last apply
-    if [ $((now - last_fallback)) -lt 2 ]; then
-        continue
-    fi
-    if [ -d "/sys/class/net/wg0" ] && [ -d "/sys/class/net/${TUN_DEV}" ]; then
-        apply_routing
-        last_fallback=$now
-    fi
-done &
+monitor_routing() {
+    ip monitor link 2>/dev/null | while read -r _event; do
+        now=$(date +%s)
+        if [ $((now - last_fallback)) -lt 2 ]; then
+            continue
+        fi
+        if [ -d "/sys/class/net/wg0" ] && [ -d "/sys/class/net/${TUN_DEV}" ]; then
+            apply_routing
+            last_fallback=$now
+        fi
+    done
+}
 
-# Fallback loop in case ip monitor exits or misses events
+monitor_routing &
+MONITOR_PID=$!
+
+# Fallback loop: re-apply periodically and check that the monitor is alive
 while true; do
     sleep "${FALLBACK_INTERVAL}"
     if [ -d "/sys/class/net/wg0" ] && [ -d "/sys/class/net/${TUN_DEV}" ]; then
         apply_routing
+    fi
+    if ! kill -0 "$MONITOR_PID" 2>/dev/null; then
+        echo "[routing] ip monitor process died, restarting..."
+        monitor_routing &
+        MONITOR_PID=$!
     fi
 done

@@ -1,0 +1,91 @@
+name: Version Check
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  check-versions:
+    name: Check Component Versions
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current versions from Dockerfile
+        id: current
+        run: |
+          WG_EASY_V=$(grep -oP 'wg-easy:\K[0-9.]+' Dockerfile | head -1)
+          MIHOMO_V=$(grep -oP 'MIHOMO_VERSION=v\K[0-9.]+' Dockerfile | head -1)
+          METACUBEXD_V=$(grep -oP 'METACUBEXD_VERSION=v\K[0-9.]+' Dockerfile | head -1)
+          echo "wg_easy=$WG_EASY_V" >> "$GITHUB_OUTPUT"
+          echo "mihomo=$MIHOMO_V" >> "$GITHUB_OUTPUT"
+          echo "metacubexd=$METACUBEXD_V" >> "$GITHUB_OUTPUT"
+
+      - name: Check wg-easy latest
+        id: wg-easy
+        run: |
+          LATEST=$(curl -sf "https://api.github.com/repos/wg-easy/wg-easy/releases/latest" | jq -r '.tag_name' | sed 's/^v//')
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current=${{ steps.current.outputs.wg_easy }}" >> "$GITHUB_OUTPUT"
+
+      - name: Check Mihomo latest
+        id: mihomo
+        run: |
+          LATEST=$(curl -sf "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" | jq -r '.tag_name' | sed 's/^v//')
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current=${{ steps.current.outputs.mihomo }}" >> "$GITHUB_OUTPUT"
+
+      - name: Check metacubexd latest
+        id: metacubexd
+        run: |
+          LATEST=$(curl -sf "https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest" | jq -r '.tag_name' | sed 's/^v//')
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current=${{ steps.current.outputs.metacubexd }}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY=""
+          TITLE="[version-check] Component updates available"
+
+          # wg-easy
+          if [ "${{ steps.wg-easy.outputs.latest }}" != "${{ steps.wg-easy.outputs.current }}" ]; then
+            BODY+="- **wg-easy**: \`${{ steps.wg-easy.outputs.current }}\` → \`${{ steps.wg-easy.outputs.latest }}\`  "$'\n'
+          fi
+
+          # Mihomo
+          if [ "${{ steps.mihomo.outputs.latest }}" != "${{ steps.mihomo.outputs.current }}" ]; then
+            BODY+="- **Mihomo**: \`${{ steps.mihomo.outputs.current }}\` → \`${{ steps.mihomo.outputs.latest }}\`  "$'\n'
+          fi
+
+          # metacubexd
+          if [ "${{ steps.metacubexd.outputs.latest }}" != "${{ steps.metacubexd.outputs.current }}" ]; then
+            BODY+="- **metacubexd**: \`${{ steps.metacubexd.outputs.current }}\` → \`${{ steps.metacubexd.outputs.latest }}\`  "$'\n'
+          fi
+
+          if [ -z "$BODY" ]; then
+            echo "All components are up to date."
+            # Close existing issue if any
+            EXISTING=$(gh issue list --label "version-check" --state open --json number -q '.[0].number' 2>/dev/null || true)
+            if [ -n "$EXISTING" ]; then
+              gh issue close "$EXISTING" --reason "completed" --comment "All components are now up to date."
+            fi
+            exit 0
+          fi
+
+          BODY+="  "$'\n'"Update the versions in \`Dockerfile\` and update \`MIHOMO_SHA256\` if Mihomo changed."
+
+          EXISTING=$(gh issue list --label "version-check" --state open --json number -q '.[0].number' 2>/dev/null || true)
+          if [ -n "$EXISTING" ]; then
+            gh issue edit "$EXISTING" --body "$BODY"
+            echo "Updated existing issue #$EXISTING"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label "version-check" || \
+              gh issue create --title "$TITLE" --body "$BODY"
+            echo "Created new issue"
+          fi

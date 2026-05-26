@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: CI
 
 on:
   push:
@@ -6,14 +6,89 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  REGISTRY: docker.io
-  IMAGE_NAME: ksantd/wg-gateway
-  GHCR_REGISTRY: ghcr.io
-  GHCR_IMAGE: sers88/wg-gateway
-
 jobs:
-  build:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: shellcheck scripts/*.sh
+
+  smoke-test:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: wg-gateway:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container
+        run: |
+          docker run -d \
+            --name wg-gateway-test \
+            --network host \
+            --cap-add NET_ADMIN \
+            --cap-add SYS_MODULE \
+            --device /dev/net/tun:/dev/net/tun \
+            -e WG_HOST=127.0.0.1 \
+            -e WG_EASY_INIT_PASSWORD=test-password \
+            wg-gateway:test
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to start..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:51821 > /dev/null 2>&1; then
+              echo "wg-easy is up after ${i}s"
+              break
+            fi
+            sleep 2
+          done
+
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:51888/version > /dev/null 2>&1; then
+              echo "Mihomo is up after ${i}s"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Verify services
+        run: |
+          echo "=== wg-easy ==="
+          curl -sf http://localhost:51821 | head -c 200 || echo "wg-easy not responding"
+          echo ""
+          echo "=== Mihomo ==="
+          curl -sf http://localhost:51888/version || echo "Mihomo not responding"
+          echo ""
+          echo "=== Logs ==="
+          docker logs wg-gateway-test 2>&1 | tail -30
+
+      - name: Healthcheck
+        run: docker exec wg-gateway-test /scripts/healthcheck.sh
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f wg-gateway-test 2>/dev/null || true
+
+  build-and-push:
+    name: Build and Push
+    needs: [shellcheck, smoke-test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,8 +121,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE }}
+            docker.io/ksantd/wg-gateway
+            ghcr.io/sers88/wg-gateway
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value={{date 'YY.MM.DD.HH.mm'}}

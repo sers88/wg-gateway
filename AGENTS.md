@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.25** (proxy/routing engine), and **metacubexd v1.249.1** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
+Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.26** (proxy/routing engine), and **metacubexd v1.249.1** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
 
 ## Build and run
 
@@ -31,6 +31,7 @@ No tests, lint, or typecheck exist. The only validation is whether the Docker im
 - **wg-easy v15 uses INIT_* env vars for unattended setup** — on first start the container auto-configures the admin user, WG host/port, DNS and Allowed IPs via `INIT_ENABLED=true` so the Web UI wizard is skipped.
 - **rp_filter must be 0** (not 2) — WG↔TUN traffic has entirely asymmetric paths, so even loose mode (`2`) drops packets.
 - **Both iptables backends are handled** — Unraid Docker uses `iptables-legacy` with FORWARD DROP policy; other systems use `iptables-nft`. All iptables commands in scripts target both.
+- **metacubexd UI auto-sync** — metacubexd assets are bundled at `/opt/metacubexd` in the image with a `.version` file. On every container start, the entrypoint reads the `external-ui` path from the user's Mihomo config and syncs the bundled assets there if the version changed. This ensures UI updates are applied automatically when the Docker image is updated, regardless of the user's configured `external-ui` path.
 
 ## CI
 

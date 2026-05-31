@@ -91,24 +91,45 @@ if [ ! -f /data/mihomo/config.yaml ]; then
     cp /defaults/mihomo/config.yaml /data/mihomo/config.yaml
 fi
 
-# Sync bundled UI assets to persistent volume if version changed.
-# This ensures /data/ui always has the latest metacubexd from the image,
-# so users who set external-ui: /data/ui in config.yaml get updated assets
-# after pulling a new Docker image.
-BUNDLED_VERSION=""
-PERSISTED_VERSION=""
-if [ -f /opt/metacubexd/.version ]; then
-    BUNDLED_VERSION=$(cat /opt/metacubexd/.version)
-fi
-if [ -f /data/ui/.version ]; then
-    PERSISTED_VERSION=$(cat /data/ui/.version)
-fi
-if [ "$BUNDLED_VERSION" != "$PERSISTED_VERSION" ]; then
-    echo "[wg-gateway] Updating UI assets (${PERSISTED_VERSION:-none} -> ${BUNDLED_VERSION})..."
-    rm -rf /data/ui/*
-    cp -a /opt/metacubexd/. /data/ui/
-    echo "[wg-gateway] UI assets updated to ${BUNDLED_VERSION}."
-fi
+# Sync bundled metacubexd UI assets to the external-ui path configured by the user.
+# Reads the actual external-ui directory from /data/mihomo/config.yaml so that
+# assets are updated at whichever path Mihomo will serve them from — whether the
+# user kept the default (/data/ui) or set a custom path.
+sync_ui_assets() {
+    local bundled_dir="/opt/metacubexd"
+    local config_file="/data/mihomo/config.yaml"
+
+    if [ ! -f "$bundled_dir/.version" ]; then
+        return
+    fi
+
+    local bundled_version
+    bundled_version=$(cat "$bundled_dir/.version")
+
+    local ui_dir="/data/ui"
+    if [ -f "$config_file" ]; then
+        local parsed
+        parsed=$(grep -E '^external-ui:' "$config_file" | head -1 | sed 's/^external-ui:[[:space:]]*//' | tr -d '"' | tr -d "'")
+        if [ -n "$parsed" ] && [ "$parsed" != "$bundled_dir" ]; then
+            ui_dir="$parsed"
+        fi
+    fi
+
+    local persisted_version=""
+    if [ -f "$ui_dir/.version" ]; then
+        persisted_version=$(cat "$ui_dir/.version")
+    fi
+
+    if [ "$bundled_version" != "$persisted_version" ]; then
+        echo "[wg-gateway] Updating UI assets at ${ui_dir} (${persisted_version:-none} -> ${bundled_version})..."
+        mkdir -p "$ui_dir"
+        rm -rf "${ui_dir:?}"/*
+        cp -a "$bundled_dir/." "$ui_dir/"
+        echo "[wg-gateway] UI assets updated to ${bundled_version}."
+    fi
+}
+
+sync_ui_assets
 
 # Apply kernel parameters
 /scripts/setup-sysctl.sh

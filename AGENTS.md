@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.25** (proxy/routing engine), and **metacubexd v1.248.5** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
+Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.25** (proxy/routing engine), and **metacubexd v1.249.1** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
 
 ## Build and run
 
@@ -34,10 +34,10 @@ No tests, lint, or typecheck exist. The only validation is whether the Docker im
 
 ## CI
 
-- `.github/workflows/docker.yml` — builds on push to `main`, pushes `latest` + short SHA to Docker Hub
+- `.github/workflows/docker.yml` — builds on push to `main` (`latest` + timestamp) and `feature/arm64-support` (`snapshot` + `snapshot-<sha>`). Smoke tests run on both `linux/amd64` and `linux/arm64` native runners via matrix strategy.
 - `.github/workflows/release.yml` — on `v*` tags, builds and pushes semver tags + `latest`, creates GitHub Release with auto-generated notes
-- Platform: `linux/amd64` only
-- Image: `ksantd/wg-gateway` on Docker Hub
+- Platforms: `linux/amd64`, `linux/arm64`
+- Image: `ksantd/wg-gateway` on Docker Hub, `ghcr.io/sers88/wg-gateway` on GHCR
 
 ## Editing scripts
 

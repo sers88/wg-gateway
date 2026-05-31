@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/arm64-support]
   pull_request:
     branches: [main]
 
@@ -20,8 +20,17 @@ jobs:
         run: shellcheck scripts/*.sh
 
   smoke-test:
-    name: Smoke Test
-    runs-on: ubuntu-latest
+    name: Smoke Test (${{ matrix.platform }})
+    needs: shellcheck
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
 
@@ -117,18 +126,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
       - name: Log in to Docker Hub
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GHCR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -143,16 +155,18 @@ jobs:
             docker.io/ksantd/wg-gateway
             ghcr.io/sers88/wg-gateway
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value={{date 'YY.MM.DD.HH.mm'}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value={{date 'YY.MM.DD.HH.mm'}},enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=snapshot,enable=${{ github.ref == 'refs/heads/feature/arm64-support' }}
+            type=raw,value=snapshot-{{sha}},enable=${{ github.ref == 'refs/heads/feature/arm64-support' }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

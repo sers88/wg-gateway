@@ -40,25 +40,25 @@ jobs:
       - name: Verify image contents
         run: |
           echo "=== Check binaries ==="
-          docker run --rm wg-gateway:test which mihomo
-          docker run --rm wg-gateway:test which wg
-          docker run --rm wg-gateway:test which node
-          docker run --rm wg-gateway:test which dumb-init
+          docker run --rm --entrypoint "" wg-gateway:test which mihomo
+          docker run --rm --entrypoint "" wg-gateway:test which wg
+          docker run --rm --entrypoint "" wg-gateway:test which node
+          docker run --rm --entrypoint "" wg-gateway:test which dumb-init
 
           echo "=== Check Mihomo binary is executable ==="
-          docker run --rm wg-gateway:test /usr/local/bin/mihomo -v
+          docker run --rm --entrypoint "" wg-gateway:test /usr/local/bin/mihomo -v
 
           echo "=== Check metacubexd UI assets ==="
-          docker run --rm wg-gateway:test ls /opt/metacubexd/index.html
+          docker run --rm --entrypoint "" wg-gateway:test ls /opt/metacubexd/index.html
 
           echo "=== Check default config ==="
-          docker run --rm wg-gateway:test cat /defaults/mihomo/config.yaml | head -5
+          docker run --rm --entrypoint "" wg-gateway:test cat /defaults/mihomo/config.yaml | head -5
 
           echo "=== Check scripts ==="
-          docker run --rm wg-gateway:test ls -la /scripts/
+          docker run --rm --entrypoint "" wg-gateway:test ls -la /scripts/
 
           echo "=== Check supervisord config ==="
-          docker run --rm wg-gateway:test cat /etc/supervisor/conf.d/wg-gateway.conf | head -5
+          docker run --rm --entrypoint "" wg-gateway:test cat /etc/supervisor/conf.d/wg-gateway.conf | head -5
 
       - name: Start container
         run: |

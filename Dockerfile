@@ -23,7 +23,7 @@ FROM debian:bookworm-slim
 
 ARG MIHOMO_VERSION=v1.19.25
 ARG MIHOMO_SHA256=d06b0e34ec662f6a857341c0ac3020cfc0ec133038654cf83047d527af40f329
-ARG METACUBEXD_VERSION=v1.248.5
+ARG METACUBEXD_VERSION=v1.249.1
 
 LABEL org.opencontainers.image.title="wg-gateway" \
       org.opencontainers.image.description="WireGuard VPN gateway with rule-based proxy routing" \

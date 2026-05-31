@@ -22,9 +22,9 @@ RUN npm install --no-save --omit=dev libsql argon2 \
 FROM debian:bookworm-slim
 
 ARG TARGETARCH
-ARG MIHOMO_VERSION=v1.19.25
-ARG MIHOMO_SHA256_AMD64=d06b0e34ec662f6a857341c0ac3020cfc0ec133038654cf83047d527af40f329
-ARG MIHOMO_SHA256_ARM64=7a3581fbf3e79b3b47eabca358ba6a4e70fafa63810c08d5a190814abde1b5a2
+ARG MIHOMO_VERSION=v1.19.26
+ARG MIHOMO_SHA256_AMD64=2cf19e535167e3700df80ab5acaeef5fe9c9e07619d94358f3933ce3ab9c9497
+ARG MIHOMO_SHA256_ARM64=579b4cda07a99ef0cab543ddb2b2f1d48611abb29494a30e30c269ef8654f46d
 ARG METACUBEXD_VERSION=v1.249.1
 
 LABEL org.opencontainers.image.title="wg-gateway" \
@@ -66,7 +66,8 @@ RUN MIHOMO_ARCH="amd64" \
 # metacubexd UI assets
 RUN mkdir -p /opt/metacubexd \
     && curl -L "https://github.com/MetaCubeX/metacubexd/releases/download/${METACUBEXD_VERSION}/compressed-dist.tgz" \
-    | tar -xz -C /opt/metacubexd
+    | tar -xz -C /opt/metacubexd \
+    && echo "${METACUBEXD_VERSION}" > /opt/metacubexd/.version
 
 # Config files, scripts, and data directories — single layer
 COPY config/supervisord.conf /etc/supervisor/conf.d/wg-gateway.conf

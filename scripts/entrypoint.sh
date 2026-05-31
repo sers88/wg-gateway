@@ -91,10 +91,24 @@ if [ ! -f /data/mihomo/config.yaml ]; then
     cp /defaults/mihomo/config.yaml /data/mihomo/config.yaml
 fi
 
-# UI assets are bundled at /opt/metacubexd in the image.
-# The default Mihomo config points external-ui there directly.
-# Users can override by editing config.yaml to set external-ui: /data/ui
-# and mounting custom UI assets into /data/ui.
+# Sync bundled UI assets to persistent volume if version changed.
+# This ensures /data/ui always has the latest metacubexd from the image,
+# so users who set external-ui: /data/ui in config.yaml get updated assets
+# after pulling a new Docker image.
+BUNDLED_VERSION=""
+PERSISTED_VERSION=""
+if [ -f /opt/metacubexd/.version ]; then
+    BUNDLED_VERSION=$(cat /opt/metacubexd/.version)
+fi
+if [ -f /data/ui/.version ]; then
+    PERSISTED_VERSION=$(cat /data/ui/.version)
+fi
+if [ "$BUNDLED_VERSION" != "$PERSISTED_VERSION" ]; then
+    echo "[wg-gateway] Updating UI assets (${PERSISTED_VERSION:-none} -> ${BUNDLED_VERSION})..."
+    rm -rf /data/ui/*
+    cp -a /opt/metacubexd/. /data/ui/
+    echo "[wg-gateway] UI assets updated to ${BUNDLED_VERSION}."
+fi
 
 # Apply kernel parameters
 /scripts/setup-sysctl.sh

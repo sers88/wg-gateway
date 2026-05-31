@@ -21,8 +21,10 @@ RUN npm install --no-save --omit=dev libsql argon2 \
 # --- Stage 3: Final image ---
 FROM debian:bookworm-slim
 
+ARG TARGETARCH
 ARG MIHOMO_VERSION=v1.19.25
-ARG MIHOMO_SHA256=d06b0e34ec662f6a857341c0ac3020cfc0ec133038654cf83047d527af40f329
+ARG MIHOMO_SHA256_AMD64=d06b0e34ec662f6a857341c0ac3020cfc0ec133038654cf83047d527af40f329
+ARG MIHOMO_SHA256_ARM64=0d2f19c4bf30121feff4ca51a1a5ddd7837ee1f9faaf930ca83533bca51e8b34
 ARG METACUBEXD_VERSION=v1.249.1
 
 LABEL org.opencontainers.image.title="wg-gateway" \
@@ -51,12 +53,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=wg-easy-source /app /app
 COPY --from=native-build /app/node_modules /app/server/node_modules
 
-# Mihomo core binary with SHA256 verification
-# Asset naming: mihomo-linux-amd64-<tag>.gz (adjust build arg if upstream changes)
-RUN MIHOMO_URL="https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/mihomo-linux-amd64-${MIHOMO_VERSION}.gz" \
+RUN MIHOMO_ARCH="amd64" \
+    && MIHOMO_SHA="${MIHOMO_SHA256_AMD64}" \
+    && if [ "$TARGETARCH" = "arm64" ]; then MIHOMO_ARCH="arm64"; MIHOMO_SHA="${MIHOMO_SHA256_ARM64}"; fi \
+    && MIHOMO_URL="https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/mihomo-linux-${MIHOMO_ARCH}-${MIHOMO_VERSION}.gz" \
     && curl -L -o /tmp/mihomo.gz "$MIHOMO_URL" \
     && gunzip -f /tmp/mihomo.gz \
-    && echo "${MIHOMO_SHA256}  /tmp/mihomo" | sha256sum -c \
+    && echo "${MIHOMO_SHA}  /tmp/mihomo" | sha256sum -c \
     && mv /tmp/mihomo /usr/local/bin/mihomo \
     && chmod +x /usr/local/bin/mihomo
 

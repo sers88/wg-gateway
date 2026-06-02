@@ -287,7 +287,7 @@ docker run -d \
 
 ## Known limitations
 
-- **Linux/amd64 only** — the image is built specifically for x86_64 Linux hosts.
+- **linux/amd64 and linux/arm64** — the image is built for both x86_64 and ARM64 Linux hosts.
 - **Authentication** — The proxy engine UI (`MIHOMO_SECRET`) has optional API secret. wg-easy v15 requires credentials: either provide `WG_EASY_INIT_USERNAME`/`WG_EASY_INIT_PASSWORD` for unattended setup, or set them via the Web UI wizard on first start.
 - **Single WireGuard interface** — wg-easy manages one `wg0` interface.
 - **No split-tunnel from server side** — all client traffic is routed through the gateway. Clients can manage split-tunneling via the `AllowedIPs` in their WireGuard config.

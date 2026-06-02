@@ -5,16 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-06-02
 
 ### Added
 
+- **linux/arm64 support** — multi-platform builds for both amd64 and arm64
+- ARM64 smoke tests in CI via matrix strategy with native runners
 - Environment variable validation in `entrypoint.sh` (ports, IPs, password length, etc.)
-- SHA256 checksum verification for Mihomo binary during Docker build
+- SHA256 checksum verification for Mihomo binary during Docker build (amd64 + arm64)
 - OCI image labels in Dockerfile (`org.opencontainers.image.*`)
 - `HEALTHCHECK` instruction in Dockerfile as fallback for non-compose deployments
 - WireGuard interface check (`wg show wg0`) in `healthcheck.sh`
 - Background process monitoring with automatic restart in `setup-routing.sh`
+- Auto-sync metacubexd UI assets to user's `external-ui` path on startup
 - `shellcheck` linting step in CI for all shell scripts
 - Smoke test in CI (`docker run` + service verification + healthcheck)
 - Weekly version-check workflow that creates GitHub issues for component updates
@@ -22,9 +25,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Consolidated `RUN` layers in Dockerfile (scripts + data dirs merged into single layer)
+- **Mihomo** v1.19.25 → v1.19.26
+- **metacubexd** v1.248.5 → v1.249.1
+- GitHub Actions bumped to latest major versions (Node.js 24 compatible)
 - CI workflow restructured: `shellcheck` → `smoke-test` → `build-and-push` (gated)
+- Consolidated `RUN` layers in Dockerfile (scripts + data dirs merged into single layer)
 - Updated `.dockerignore` to exclude docs, templates, and project metadata
+
+### Fixed
+
+- Corrected Mihomo SHA256 hashes for uncompressed binaries
+- Fixed shellcheck SC2086 warnings in CI scripts
+- Fixed smoke test grep regex and CI environment adaptation
+- Fixed entrypoint override in CI verify step to prevent supervisord startup
+
+### Components
+
+- wg-easy v15.3.0
+- Mihomo v1.19.26
+- metacubexd v1.249.1
 
 ## [1.0.0] - 2025-05-27
 
@@ -36,5 +55,5 @@ _Initial release._
 - Mihomo v1.19.25
 - metacubexd v1.248.5
 
-[Unreleased]: https://github.com/ksantd/wg-gateway/compare/v1.0.0...main
+[1.1.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.0.0

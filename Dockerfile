@@ -25,7 +25,7 @@ ARG TARGETARCH
 ARG MIHOMO_VERSION=v1.19.26
 ARG MIHOMO_SHA256_AMD64=699ac3a31b0a8e3f60b84eb3f07084e63499baf2e9248ef715f71659c64c1492
 ARG MIHOMO_SHA256_ARM64=e9543af27cfe791c92b9698205c11da4719777a1b9ce4ea5454474b9244a49bb
-ARG METACUBEXD_VERSION=v1.249.1
+ARG METACUBEXD_VERSION=v1.249.2
 
 LABEL org.opencontainers.image.title="wg-gateway" \
       org.opencontainers.image.description="WireGuard VPN gateway with rule-based proxy routing" \

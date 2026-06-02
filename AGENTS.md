@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.26** (proxy/routing engine), and **metacubexd v1.249.1** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
+Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.26** (proxy/routing engine), and **metacubexd v1.249.2** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
 
 ## Build and run
 

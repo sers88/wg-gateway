@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-06-02
+
+### Changed
+
+- **metacubexd** v1.249.1 → v1.249.2
+
+### Fixed
+
+- Russian locale accuracy and terminology in metacubexd UI
+
+### Components
+
+- wg-easy v15.3.0
+- Mihomo v1.19.26
+- metacubexd v1.249.2
+
 ## [1.1.0] - 2026-06-02
 
 ### Added
@@ -55,5 +71,6 @@ _Initial release._
 - Mihomo v1.19.25
 - metacubexd v1.248.5
 
+[1.1.1]: https://github.com/ksantd/wg-gateway/releases/tag/v1.1.1
 [1.1.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.0.0

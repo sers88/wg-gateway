@@ -22,10 +22,10 @@ RUN npm install --no-save --omit=dev libsql argon2 \
 FROM debian:bookworm-slim
 
 ARG TARGETARCH
-ARG MIHOMO_VERSION=v1.19.26
-ARG MIHOMO_SHA256_AMD64=699ac3a31b0a8e3f60b84eb3f07084e63499baf2e9248ef715f71659c64c1492
-ARG MIHOMO_SHA256_ARM64=e9543af27cfe791c92b9698205c11da4719777a1b9ce4ea5454474b9244a49bb
-ARG METACUBEXD_VERSION=v1.251.1
+ARG MIHOMO_VERSION=v1.19.27
+ARG MIHOMO_SHA256_AMD64=fb3e34c55844f389ff54679e5a3aec331d5ec38006c20f8dcc476fb47768a58f
+ARG MIHOMO_SHA256_ARM64=87db0c6660a9557a901b5750f997967e71d8c0af07ea1d1dd4d04c28da7f7e6f
+ARG METACUBEXD_VERSION=v1.251.3
 
 LABEL org.opencontainers.image.title="wg-gateway" \
       org.opencontainers.image.description="WireGuard VPN gateway with rule-based proxy routing" \

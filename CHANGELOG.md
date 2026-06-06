@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-06
+
+### Changed
+
+- **Mihomo** v1.19.26 → v1.19.27
+- **metacubexd** v1.251.1 → v1.251.3
+
+### Components
+
+- wg-easy v15.3.0
+- Mihomo v1.19.27
+- metacubexd v1.251.3
+
 ## [1.1.1] - 2026-06-02
 
 ### Changed
@@ -71,6 +84,7 @@ _Initial release._
 - Mihomo v1.19.25
 - metacubexd v1.248.5
 
+[1.2.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.2.0
 [1.1.1]: https://github.com/ksantd/wg-gateway/releases/tag/v1.1.1
 [1.1.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.0.0

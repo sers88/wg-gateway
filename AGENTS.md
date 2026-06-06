@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.26** (proxy/routing engine), and **metacubexd v1.249.2** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
+Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.27** (proxy/routing engine), and **metacubexd v1.251.3** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
 
 ## Build and run
 
@@ -43,6 +43,21 @@ No tests, lint, or typecheck exist. The only validation is whether the Docker im
 ## Editing scripts
 
 All scripts in `scripts/` are bash and must remain compatible with Debian bookworm-slim. Notable constraint: **`ip rule replace` is not available** on Debian bookworm's iproute2 — use `ip rule add` with existence checks instead (see `setup-routing.sh`).
+
+## Updating Mihomo version
+
+When bumping `MIHOMO_VERSION` in `Dockerfile`, the `MIHOMO_SHA256_*` values must be updated too.
+
+**Important: SHA256 must be computed on the uncompressed binary**, not the `.gz` archive. The `sha256sum -c` check in the Dockerfile runs after `gunzip`, so it validates the decompressed file.
+
+```bash
+# Correct: download .gz, decompress, then hash the binary
+wget https://github.com/MetaCubeX/mihomo/releases/download/v1.19.27/mihomo-linux-amd64-v1.19.27.gz
+gunzip mihomo-linux-amd64-v1.19.27.gz
+sha256sum mihomo-linux-amd64
+```
+
+Repeat for both `linux-amd64` and `linux-arm64` variants.
 
 ## Mihomo config changes
 

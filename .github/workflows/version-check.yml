@@ -2,7 +2,7 @@ name: Version Check
 
 on:
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
@@ -20,10 +20,8 @@ jobs:
         run: |
           WG_EASY_V=$(grep -oP 'wg-easy:\K[0-9.]+' Dockerfile | head -1)
           MIHOMO_V=$(grep -oP 'MIHOMO_VERSION=v\K[0-9.]+' Dockerfile | head -1)
-          METACUBEXD_V=$(grep -oP 'METACUBEXD_VERSION=v\K[0-9.]+' Dockerfile | head -1)
           echo "wg_easy=$WG_EASY_V" >> "$GITHUB_OUTPUT"
           echo "mihomo=$MIHOMO_V" >> "$GITHUB_OUTPUT"
-          echo "metacubexd=$METACUBEXD_V" >> "$GITHUB_OUTPUT"
 
       - name: Check wg-easy latest
         id: wg-easy
@@ -38,13 +36,6 @@ jobs:
           LATEST=$(curl -sf "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" | jq -r '.tag_name' | sed 's/^v//')
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
           echo "current=${{ steps.current.outputs.mihomo }}" >> "$GITHUB_OUTPUT"
-
-      - name: Check metacubexd latest
-        id: metacubexd
-        run: |
-          LATEST=$(curl -sf "https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest" | jq -r '.tag_name' | sed 's/^v//')
-          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
-          echo "current=${{ steps.current.outputs.metacubexd }}" >> "$GITHUB_OUTPUT"
 
       - name: Create or update issue
         env:
@@ -63,11 +54,6 @@ jobs:
             BODY+="- **Mihomo**: \`${{ steps.mihomo.outputs.current }}\` → \`${{ steps.mihomo.outputs.latest }}\`  "$'\n'
           fi
 
-          # metacubexd
-          if [ "${{ steps.metacubexd.outputs.latest }}" != "${{ steps.metacubexd.outputs.current }}" ]; then
-            BODY+="- **metacubexd**: \`${{ steps.metacubexd.outputs.current }}\` → \`${{ steps.metacubexd.outputs.latest }}\`  "$'\n'
-          fi
-
           if [ -z "$BODY" ]; then
             echo "All components are up to date."
             # Close existing issue if any
@@ -78,7 +64,7 @@ jobs:
             exit 0
           fi
 
-          BODY+="  "$'\n'"Update the versions in \`Dockerfile\` and update \`MIHOMO_SHA256\` if Mihomo changed."
+          BODY+="  "$'\n'"Update the versions in \`Dockerfile\` and update the \`MIHOMO_SHA256_*\` values if Mihomo changed."
 
           EXISTING=$(gh issue list --label "version-check" --state open --json number -q '.[0].number' 2>/dev/null || true)
           if [ -n "$EXISTING" ]; then

@@ -1,0 +1,52 @@
+name: Update metacubexd
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Update metacubexd to latest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(grep -oP 'METACUBEXD_VERSION=\Kv[0-9.]+' Dockerfile | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Current: $VERSION"
+
+      - name: Get latest version
+        id: latest
+        run: |
+          TAG=$(curl -sf "https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest" | jq -r '.tag_name')
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Latest: $TAG"
+
+      - name: Update Dockerfile
+        if: steps.current.outputs.version != steps.latest.outputs.version
+        run: |
+          sed -i "s/^ARG METACUBEXD_VERSION=.*/ARG METACUBEXD_VERSION=${{ steps.latest.outputs.version }}/" Dockerfile
+
+      - name: Create Pull Request
+        if: steps.current.outputs.version != steps.latest.outputs.version
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update metacubexd to ${{ steps.latest.outputs.version }}"
+          title: "chore(deps): update metacubexd to ${{ steps.latest.outputs.version }}"
+          body: |
+            Automated update of metacubexd from `${{ steps.current.outputs.version }}` to `${{ steps.latest.outputs.version }}`.
+
+            metacubexd is a static UI bundle — no native dependencies or config changes.
+            Low-risk update suitable for automatic merging.
+          branch: auto-update/metacubexd-${{ steps.latest.outputs.version }}
+          labels: dependencies
+          delete-branch: true

@@ -3,6 +3,10 @@ name: CI
 on:
   push:
     branches: [main, feature/arm64-support]
+    paths-ignore:
+      - '.github/**'
+      - '*.md'
+      - '.env.example'
   pull_request:
     branches: [main]
 

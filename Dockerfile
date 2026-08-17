@@ -2,7 +2,7 @@
 # Builds a single image combining wg-easy, Mihomo, and metacubexd.
 
 # --- Stage 1: wg-easy app files ---
-FROM ghcr.io/wg-easy/wg-easy:15.3.0 AS wg-easy-source
+FROM ghcr.io/wg-easy/wg-easy:15.4.0 AS wg-easy-source
 
 # --- Stage 2: Build native modules for Debian/glibc ---
 FROM debian:bookworm-slim AS native-build
@@ -22,9 +22,9 @@ RUN npm install --no-save --omit=dev libsql argon2 \
 FROM debian:bookworm-slim
 
 ARG TARGETARCH
-ARG MIHOMO_VERSION=v1.19.29
-ARG MIHOMO_SHA256_AMD64=9c397be7489538628fae781bc005e4c5b8cd7b0961b8bb2ca815c8150f193577
-ARG MIHOMO_SHA256_ARM64=8e02308f672e89c076bfc2fa1b03379bd54e58b0bafa81ffb01113fcf6da348d
+ARG MIHOMO_VERSION=v1.19.30
+ARG MIHOMO_SHA256_AMD64=3e92df24f5e80e86b9cf9183ceb7bb575f0bd132a9dc4081dae42e80f21076ae
+ARG MIHOMO_SHA256_ARM64=b9456718a8955364b9a77c80f74dca49ded10f071c1c6b4513a0ea68a3d87a50
 ARG METACUBEXD_VERSION=v1.271.0
 
 LABEL org.opencontainers.image.title="wg-gateway" \
@@ -47,7 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# wg-easy v15.3.0 app — copy built Nuxt output from upstream image.
+# wg-easy v15.4.0 app — copy built Nuxt output from upstream image.
 # Upstream is Alpine/musl-based; we replace the node_modules with
 # Debian/glibc-compatible native modules (libsql, argon2) from Stage 2.
 COPY --from=wg-easy-source /app /app

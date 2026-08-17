@@ -11,13 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **wg-easy** v15.3.0 → v15.4.0 (OAuth support, Nuxt 4 migration, security and performance improvements)
 - **Mihomo** v1.19.27 → v1.19.30 (includes previously unrecorded v1.19.28 and v1.19.29)
-- **metacubexd** v1.251.3 → v1.271.0 (includes previously unrecorded updates)
+- **metacubexd** v1.251.3 → v1.273.0 (includes previously unrecorded updates)
 
 ### Components
 
 - wg-easy v15.4.0
 - Mihomo v1.19.30
-- metacubexd v1.271.0
+- metacubexd v1.273.0
 
 ## [1.2.0] - 2026-06-06
 

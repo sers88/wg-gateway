@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Single Docker image that bundles **wg-easy v15.3.0** (WireGuard management), **Mihomo v1.19.28** (proxy/routing engine), and **metacubexd v1.258.1** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
+Single Docker image that bundles **wg-easy v15.4.0** (WireGuard management), **Mihomo v1.19.30** (proxy/routing engine), and **metacubexd v1.273.0** (Mihomo UI). No application code — the repo is shell scripts, configs, and a Dockerfile that assembles third-party components.
 
 ## Build and run
 
@@ -52,8 +52,8 @@ When bumping `MIHOMO_VERSION` in `Dockerfile`, the `MIHOMO_SHA256_*` values must
 
 ```bash
 # Correct: download .gz, decompress, then hash the binary
-wget https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-linux-amd64-v1.19.28.gz
-gunzip mihomo-linux-amd64-v1.19.28.gz
+wget https://github.com/MetaCubeX/mihomo/releases/download/v1.19.30/mihomo-linux-amd64-v1.19.30.gz
+gunzip mihomo-linux-amd64-v1.19.30.gz
 sha256sum mihomo-linux-amd64
 ```
 

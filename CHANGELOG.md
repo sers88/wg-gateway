@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-17
+
+### Changed
+
+- **wg-easy** v15.3.0 → v15.4.0 (OAuth support, Nuxt 4 migration, security and performance improvements)
+- **Mihomo** v1.19.27 → v1.19.30 (includes previously unrecorded v1.19.28 and v1.19.29)
+- **metacubexd** v1.251.3 → v1.273.0 (includes previously unrecorded updates)
+
+### Components
+
+- wg-easy v15.4.0
+- Mihomo v1.19.30
+- metacubexd v1.273.0
+
 ## [1.2.0] - 2026-06-06
 
 ### Changed
@@ -84,6 +98,7 @@ _Initial release._
 - Mihomo v1.19.25
 - metacubexd v1.248.5
 
+[1.3.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.3.0
 [1.2.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.2.0
 [1.1.1]: https://github.com/ksantd/wg-gateway/releases/tag/v1.1.1
 [1.1.0]: https://github.com/ksantd/wg-gateway/releases/tag/v1.1.0

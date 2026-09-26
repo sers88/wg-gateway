@@ -54,22 +54,31 @@ jobs:
             BODY+="- **Mihomo**: \`${{ steps.mihomo.outputs.current }}\` → \`${{ steps.mihomo.outputs.latest }}\`  "$'\n'
           fi
 
+          # Find existing open issues by exact title (label lookup is unreliable:
+          # the label may not exist in the repo, so issues were created without it)
+          EXISTING=$(gh issue list --search "in:title \"$TITLE\"" --state open --json number -q '.[].number' 2>/dev/null || true)
+
           if [ -z "$BODY" ]; then
             echo "All components are up to date."
-            # Close existing issue if any
-            EXISTING=$(gh issue list --label "version-check" --state open --json number -q '.[0].number' 2>/dev/null || true)
-            if [ -n "$EXISTING" ]; then
-              gh issue close "$EXISTING" --reason "completed" --comment "All components are now up to date."
-            fi
+            # Close ALL existing issues if any
+            for ISSUE in $EXISTING; do
+              gh issue close "$ISSUE" --reason "completed" --comment "All components are now up to date." || true
+            done
             exit 0
           fi
 
           BODY+="  "$'\n'"Update the versions in \`Dockerfile\` and update the \`MIHOMO_SHA256_*\` values if Mihomo changed."
 
-          EXISTING=$(gh issue list --label "version-check" --state open --json number -q '.[0].number' 2>/dev/null || true)
-          if [ -n "$EXISTING" ]; then
-            gh issue edit "$EXISTING" --body "$BODY"
-            echo "Updated existing issue #$EXISTING"
+          FIRST=$(echo "$EXISTING" | head -n1)
+          if [ -n "$FIRST" ]; then
+            gh issue edit "$FIRST" --body "$BODY"
+            echo "Updated existing issue #$FIRST"
+            # Close any leftover duplicates, keep only $FIRST
+            for ISSUE in $EXISTING; do
+              if [ "$ISSUE" != "$FIRST" ]; then
+                gh issue close "$ISSUE" --reason "not planned" --comment "Duplicate of #$FIRST." || true
+              fi
+            done
           else
             gh issue create --title "$TITLE" --body "$BODY" --label "version-check" || \
               gh issue create --title "$TITLE" --body "$BODY"
